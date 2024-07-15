@@ -1,45 +1,75 @@
-import React from 'react';
-import {
-  SafeAreaView,
-  StatusBar,
-  useColorScheme,
-  StyleSheet,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Button, Text, View, StyleSheet, Linking } from 'react-native';
+import { useAuth0, Auth0Provider } from 'react-native-auth0';
 
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+const Home = () => {
+  const { authorize, clearSession, user, error, isLoading, getCredentials } = useAuth0();
+  const [authCode, setAuthCode] = useState(null);
 
-import LoadingScreen from './src/screens/LoadingScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import AccountScreen from './src/screens/AccountScreen';
+  const onLogin = async () => {
+    try {
+      await authorize();
+      const credentials = await getCredentials();
+      setAuthCode(credentials?.accessToken);
+      console.log('Authorization code:', credentials?.accessToken);
+    } catch (e) {
+      console.log('Authorization error', e);
+    }
+  };
 
-import {AuthContextProvider} from './src/context/AuthContext';
+  const onLogout = async () => {
+    try {
+      await clearSession();
+      setAuthCode(null);
+      console.log('Log out successful');
+    } catch (e) {
+      console.log('Log out cancelled', e);
+    }
+  };
 
-const Stack = createNativeStackNavigator();
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+  const loggedIn = !!user;
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AuthContextProvider>
-        <NavigationContainer>
-          <Stack.Navigator>
-            <Stack.Screen name="Loading" component={LoadingScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Account" component={AccountScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </AuthContextProvider>
-    </SafeAreaView>
+    <View style={styles.container}>
+      <Text>{loggedIn ? `You are logged in as ${user.name}` : 'You are not logged in'}</Text>
+      {error && <Text>{error.message}</Text>}
+      <Button
+        onPress={loggedIn ? onLogout : onLogin}
+        title={loggedIn ? 'Log Out' : 'Log In'}
+      />
+      {authCode && (
+        <Text>Authorization Code: {authCode}</Text>
+      )}
+    </View>
+  );
+};
+
+const App = () => {
+  return (
+    <Auth0Provider
+      domain="dev-hgdgb8rwmkuq5aii.us.auth0.com"
+      clientId="29K556d8gmeWz4yrjgExXq0qPCPUfeaq"
+      redirectUri="com.homieapp.auth0://dev-hgdgb8rwmkuq5aii.us.auth0.com/android/com.homieapp/callback"
+    >
+      <Home />
+    </Auth0Provider>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
+  container: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
   },
 });
 
